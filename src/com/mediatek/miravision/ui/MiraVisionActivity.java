@@ -48,12 +48,10 @@ import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
-import android.view.IDockedStackListener;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManagerGlobal;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
@@ -101,9 +99,6 @@ public class MiraVisionActivity extends Activity implements ListView.OnItemClick
     private static final int ITEM_INVISIBLE = 0x4;
     private static final int ITEM_DISENABLE = 0x8;
 
-    private static DockDividerVisibilityListener sDockDividerVisibilityListener;
-    private static boolean sUpdateOrientation = false;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -149,20 +144,6 @@ public class MiraVisionActivity extends Activity implements ListView.OnItemClick
             show(getFragmentManager(), new IntroductionFragment(),
                     ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         }
-
-        if (sDockDividerVisibilityListener == null) {
-            Log.d(TAG, "registerDockedStackListener");
-            sDockDividerVisibilityListener = new DockDividerVisibilityListener(this);
-            registerDockedStackListener(sDockDividerVisibilityListener);
-        }
-    }
-
-    private void registerDockedStackListener(IDockedStackListener listener) {
-        try {
-            WindowManagerGlobal.getWindowManagerService().registerDockedStackListener(listener);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     private void resetPQ() {
@@ -193,8 +174,6 @@ public class MiraVisionActivity extends Activity implements ListView.OnItemClick
         DrawerListViewEntry entry = (DrawerListViewEntry) sDrawerListAdapter.getItem(position);
         Fragment fragment = mFragments[(int) entry.mId]; // default fragment
         int orientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE; // default
-        // LANDSCAPE
-        sUpdateOrientation = true;
 
         if (fragment instanceof ResetDialogFragment) {
             ResetDialogFragment resetDialog = (ResetDialogFragment) fragment;
@@ -217,7 +196,6 @@ public class MiraVisionActivity extends Activity implements ListView.OnItemClick
         // AAL and picture mode is UNSPECIFIED
         if (fragment instanceof AalSettingsFragment || fragment instanceof PictureModeFragment) {
             orientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
-            sUpdateOrientation = false;
         }
         // Basic and Advance tuning need know which item being selected
         if (fragment instanceof BasicColorTuningFragment) {
@@ -234,7 +212,6 @@ public class MiraVisionActivity extends Activity implements ListView.OnItemClick
         mDrawerList.setItemChecked(position, true);
         setTitle(entry.mFragmentTitle);
         mDrawerLayout.closeDrawer(mDrawerList);
-        Log.d(TAG, "selectItem mUpdateOrientation: " + sUpdateOrientation);
     }
 
     private void show(FragmentManager fm, Fragment fragment, int orientation) {
@@ -639,47 +616,5 @@ public class MiraVisionActivity extends Activity implements ListView.OnItemClick
         int mTitle;
         int mFragmentTitle;
         int mStatus;
-    }
-
-    class DockDividerVisibilityListener extends IDockedStackListener.Stub {
-
-        private Activity mActivity;
-
-        public DockDividerVisibilityListener(Activity activity) {
-            mActivity = activity;
-        }
-
-        @Override
-        public void onDividerVisibilityChanged(boolean visible) throws RemoteException {
-            Log.i(TAG, "window divivider changed, visible: " + visible + " mUpdateOrientation : "
-                    + sUpdateOrientation);
-            if (!visible) {
-                if (sUpdateOrientation) {
-                    mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-                } else {
-                    mActivity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-                }
-            }
-        }
-
-        @Override
-        public void onDockedStackExistsChanged(boolean exists) throws RemoteException {
-        }
-
-        @Override
-        public void onDockedStackMinimizedChanged(boolean minimized, long animDuration,
-                            boolean isHomeStackResizable)
-                throws RemoteException {
-        }
-
-        @Override
-        public void onAdjustedForImeChanged(boolean adjustedForIme, long animDuration)
-                throws RemoteException {
-
-        }
-
-        @Override
-        public void onDockSideChanged(final int newDockSide) throws RemoteException {
-        }
     }
 }
